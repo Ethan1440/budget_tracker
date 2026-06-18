@@ -4,3 +4,6 @@ A good first step is probably to not implement storage and focus building the re
 
 Architecturally think through storage of expenses and income items. Currently stored as objects {name, category amount, type}; type = income or expense. Eventually this will become how the data is stored in the DB.
 Probably worth while to at least design the table structure such that data is being stored inteligently.
+
+## Session 6/18/26
+This session I will think about what data I want to store based on features speced, and make a ER diagram based on data.

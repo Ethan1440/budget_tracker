@@ -4,7 +4,7 @@ function ManageExpenses() {
 
     //States to store user data
     //Users have the ability to add income/expense items to state. All items must have an associated category.
-    const [expenses, setExpenses] = useState([]) //State to store list of user expenses. Each expense is an object with the following properties: { name: string, category: string, amount: number }
+    const [expenses, setExpense] = useState([]) //State to store list of user expenses. Each expense is an object with the following properties: { name: string, category: string, amount: number }
     const [income, setIncome] = useState([]) //State to store list of user income. Each income is an object with the following properties: { name: string, category: string, amount: number }
     const [userCategories, setUserCategories] = useState(['Housing', 'Auto', 'Groceries', 'Social', 'Entertainment', 'Other']) //State to store list of user categories. Each category is an object with the following properties: { name: string, color: string }
 
@@ -17,7 +17,7 @@ function ManageExpenses() {
         }
 
         if (type === 'expense') {
-            setExpenses([...expenses, { name, amount, category }]); //...expenses is the state of expenses before the new expense is added. then the update function is called and the new item added to the state var.
+            setExpense([...expenses, { name, amount, category }]); //...expenses is the state of expenses before the new expense is added. then the update function is called and the new item added to the state var.
         } else if (type === 'income') {
             setIncome([...income, { name, amount, category }]);
         } else {
@@ -29,7 +29,7 @@ function ManageExpenses() {
     //remove items by name
     const removeExpense_removeIncome = (type, name) => {
         if (type === 'expense') {
-            setExpenses(expenses.filter(expense => expense.name !== name));
+            setExpense(expenses.filter(expense => expense.name !== name));
         } else if (type === 'income') {
             setIncome(income.filter(income => income.name !== name));
         } else {
