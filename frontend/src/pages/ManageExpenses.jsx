@@ -1,4 +1,5 @@
 import AddItemButton from '../components/addItemButton';
+import { useState } from 'react';
 
 function ManageExpenses() {
 
@@ -55,14 +56,24 @@ function ManageExpenses() {
             <div className="manage-expenses-columns">
                 <section className="manage-expenses-column expenses-column">
                     <h2>Expenses</h2>
-                    <AddItemButton type="expense" />
-                    <ul className="expenses-list"></ul>
+                    <AddItemButton type="expense" categories={userCategories} onAdd={addExpense_addIncome} />
+                    <ul className="expenses-list">
+                        {expenses.map(expense => { //reads income state and maps each item to a list. just name now for testing
+                            return (
+                                <li key={expense.name}>${expense.amount} - {expense.category}: {expense.name}</li>
+                            )
+                        })}
+                    </ul>
                 </section>
                 <section className="manage-expenses-column income-column">
                     <h2>Income</h2>
-                    <AddItemButton type="income" />
+                    <AddItemButton type="income" categories={userCategories} onAdd={addExpense_addIncome} />
                     <ul className="income-list">
-                        <li></li>
+                        {income.map(income => { //reads income state and maps each item to a list. just name now for testing
+                            return (
+                                <li key={income.name}>${income.amount} - {income.category}: {income.name}</li>
+                            )
+                        })}
                     </ul>
                 </section>
             </div>
