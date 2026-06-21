@@ -9,13 +9,17 @@ Probably worth while to at least design the table structure such that data is be
 This session I will think about what data I want to store based on features speced, and make a ER diagram based on data.
 
 ## Session 6/20/26
-This session I am trying to hook up the manage expenses state to the button, and get items rendering 
-properly.
+This session I am trying to hook up the manage expenses state to the button, and get items 
+rendering properly. I also implemented category management (add/remove) as well as net income calcultion based on income and expense state. 
+
+Note: Calculations with state variable in the react funtion return run whenever state 
+changes. Such that variables such as netIncome can be using state and will always be up to 
+date without tracking the calc seperately in a state variable.
 
 I realized there needs to be two category lists, one each for epenses and incomes.
 
 I have made this work for the pre-defined categories. Next up:
-- user item deletion
-- user category management
-- track expenses to a date
+- add category deletion validation that prevents deletion of categories in use (either in 
+income or expense category)
+- track expenses to a date (think about how to make this quick, but also customizable)
 - set up recurring system
