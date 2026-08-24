@@ -23,3 +23,8 @@ I have made this work for the pre-defined categories. Next up:
 income or expense category)
 - track expenses to a date (think about how to make this quick, but also customizable)
 - set up recurring system
+
+## Session 8/24/26 
+This session I am working towards the MVP, so I will pick up on the work from last time, and plan out a local backend I can use to save data. Time permitting I want to add a pie chart page that breaks down Income to expenses via pie charts.
+
+-we are going to ignore the recurring system for now. I will just delete income and expense items as they change.

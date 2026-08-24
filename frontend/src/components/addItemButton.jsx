@@ -7,15 +7,18 @@ function AddItemButton({ type, categories, onAdd }) {
     const [name, setName] = useState(''); //State to control the (expense/income)name input value. defaults to empty string.
     const [category, setCategory] = useState(categories[0] ?? ''); //State to control the category input value. defaults to first item in categories array or empty string when categories is null.
     const [amount, setAmount] = useState(0.0); //State to control the amount input value. defaults` to empty string.
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]); //State to control the date input value. defaults to current date.
+    
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onAdd(type, name, amount, category); //store state data in ManageExpenses using .addExpense_addIncome
+        onAdd(type, name, amount, category, date); //store state data in ManageExpenses using .addExpense_addIncome
 
         //reset the form
         setName('');
         setCategory(categories[0] ?? '');
         setAmount('');
+        setDate(new Date().toISOString().split('T')[0]);
         setFormOpen(false);
 
     } //TODO: Implement the form submission logic
@@ -31,8 +34,8 @@ function AddItemButton({ type, categories, onAdd }) {
         <div className="add-item-container">
             <button className={`manage-expenses-add-${type}`} onClick={() => setFormOpen(true)}>{type === 'income' ? ('Add Income') : type === 'expense' ? ('Add Expense') : ('Error Invalid type prop')}</button>
             {isFormOpen && (
-                <div className="add-item-form-container">
-                    <form onSubmit={handleSubmit}>
+                <div className="add-item-form-container" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         <label htmlFor="expense-input">{type === 'income' ? ('Income name: ') : type === 'expense' ? ('Expense name: ') : ('Error Invalid type prop')}</label>
                         <input id="expense-input" type="text" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
                         <label htmlFor="category-input">Category: </label>
@@ -43,8 +46,12 @@ function AddItemButton({ type, categories, onAdd }) {
                         </select>
                         <label htmlFor="amount-input">Amount: </label>
                         <input id="amount-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-                        <button type="submit">Add</button>
-                        <button type="button" onClick={handleCancel}>Cancel</button>
+                        <label htmlFor="date-input">Date: </label>
+                        <input id="date-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                        <div style={{ display: "flex", flexDirection: "row", gap: "10px" }}>
+                            <button type="submit">Add</button>
+                            <button type="button" onClick={handleCancel}>Cancel</button>
+                        </div>
                     </form>
                 </div>
             )}

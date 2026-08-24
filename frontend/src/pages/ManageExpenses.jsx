@@ -15,9 +15,9 @@ function ManageExpenses() {
     const addExpense_addIncome = (type, name, amount, category) => {
         //validate the category exists in income or expense categories
         if (type === 'expense' && expenseCategories.includes(category)) {
-            setExpense([...expenses, { name, amount, category }]); //...expenses is the state of expenses before the new expense is added. then the update function is called and the new item added to the state var.
+            setExpense([...expenses, { name, amount, category, date }]); //...expenses is the state of expenses before the new expense is added. then the update function is called and the new item added to the state var.
         } else if (type === 'income' && incomeCategories.includes(category)) {
-            setIncome([...income, { name, amount, category }]);
+            setIncome([...income, { name, amount, category, date }]);
         } else {
             alert('Invalid type. Please use "expense" or "income".');
             return;
@@ -76,7 +76,7 @@ function ManageExpenses() {
                     <ul className="expenses-list">
                         {expenses.map(expense => { //reads income state and maps each item to a list. just name now for testing
                             return (
-                                <li key={expense.name}>${expense.amount} - {expense.category}: {expense.name}
+                                <li key={expense.name}>${expense.amount} - {expense.category}: {expense.name} - {expense.date}
                                     <buttton onClick={() => removeExpense_removeIncome('expense', expense.name)}>X</buttton>
                                 </li>
                             )
@@ -89,7 +89,7 @@ function ManageExpenses() {
                     <ul className="income-list">
                         {income.map(income => { //reads income state and maps each item to a list. just name now for testing
                             return (
-                                <li key={income.name}>${income.amount} - {income.category}: {income.name}
+                                <li key={income.name}>${income.amount} - {income.category}: {income.name} - {income.date}
                                     <buttton onClick={() => removeExpense_removeIncome('income', income.name)}>X</buttton>
                                 </li>
                             )
