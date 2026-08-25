@@ -1,5 +1,13 @@
 import { useState } from 'react';
 
+// <input type="date"> requires YYYY-MM-DD. Use local date parts so UTC offset cannot shift "today".
+function getLocalIsoDate(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 //This component is used to add a new item to the income or expense list
 //Takes in props: type (income or expense), categories (array of strings), onAdd (function to call when item is added; calls ManageExpenses.addExpense_addIncome)
 function AddItemButton({ type, categories, onAdd }) {
@@ -7,7 +15,7 @@ function AddItemButton({ type, categories, onAdd }) {
     const [name, setName] = useState(''); //State to control the (expense/income)name input value. defaults to empty string.
     const [category, setCategory] = useState(categories[0] ?? ''); //State to control the category input value. defaults to first item in categories array or empty string when categories is null.
     const [amount, setAmount] = useState(0.0); //State to control the amount input value. defaults` to empty string.
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]); //State to control the date input value. defaults to current date.
+    const [date, setDate] = useState(getLocalIsoDate()); //State to control the date input value. defaults to current date.
     
 
     const handleSubmit = (e) => {
@@ -18,7 +26,7 @@ function AddItemButton({ type, categories, onAdd }) {
         setName('');
         setCategory(categories[0] ?? '');
         setAmount('');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(getLocalIsoDate());
         setFormOpen(false);
 
     } //TODO: Implement the form submission logic

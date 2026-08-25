@@ -2,22 +2,29 @@ import AddItemButton from '../components/addItemButton';
 import ManageCategories from '../components/manageCategories';
 import { useState } from 'react';
 
+// HTML date inputs use YYYY-MM-DD; budget items store MM-DD-YYYY.
+function toMonthDayYear(isoDate) {
+    const [year, month, day] = isoDate.split('-');
+    return `${month}-${day}-${year}`;
+}
+
 function ManageExpenses() {
 
     //States to store user data
     //Users have the ability to add income/expense items to state. All items must have an associated category.
-    const [expenses, setExpense] = useState([]) //State to store list of user expenses. Each expense is an object with the following properties: { name: string, category: string, amount: number }
-    const [income, setIncome] = useState([]) //State to store list of user income. Each income is an object with the following properties: { name: string, category: string, amount: number }
+    const [expenses, setExpense] = useState([]) //State to store list of user expenses. Each expense is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
+    const [income, setIncome] = useState([]) //State to store list of user income. Each income is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
     const [incomeCategories, setIncomeCategories] = useState(['Salary', 'Investments', 'Gifts', 'Other']) //State to store list of user categories. Each category is an object with the following properties: { name: string, color: string }
-    const [expenseCategories, setExpenseCategories] = useState(['Housing', 'Auto', 'Groceries', 'Social', 'Entertainment', 'Other']) //State to store list of user categories. Each category is an object with the following properties: { name: string, color: string }
+    const [expenseCategories, setExpenseCategories] = useState(['Housing', 'Auto', 'Groceries', 'Social', 'Entertainment', 'Other', 'One Off Expense']) //State to store list of user categories. Each category is an object with the following properties: { name: string, color: string }
 
     //Function will add an expense or income item to the state based on the type parameter.
-    const addExpense_addIncome = (type, name, amount, category) => {
+    const addExpense_addIncome = (type, name, amount, category, date) => {
         //validate the category exists in income or expense categories
+        const formattedDate = toMonthDayYear(date);
         if (type === 'expense' && expenseCategories.includes(category)) {
-            setExpense([...expenses, { name, amount, category, date }]); //...expenses is the state of expenses before the new expense is added. then the update function is called and the new item added to the state var.
+            setExpense([...expenses, { name, amount, category, date: formattedDate }]); //...expenses is the state of expenses before the new expense is added. then the update function is called and the new item added to the state var.
         } else if (type === 'income' && incomeCategories.includes(category)) {
-            setIncome([...income, { name, amount, category, date }]);
+            setIncome([...income, { name, amount, category, date: formattedDate }]);
         } else {
             alert('Invalid type. Please use "expense" or "income".');
             return;
@@ -77,7 +84,7 @@ function ManageExpenses() {
                         {expenses.map(expense => { //reads income state and maps each item to a list. just name now for testing
                             return (
                                 <li key={expense.name}>${expense.amount} - {expense.category}: {expense.name} - {expense.date}
-                                    <buttton onClick={() => removeExpense_removeIncome('expense', expense.name)}>X</buttton>
+                                    <buttton style={{ paddingLeft: '10px', cursor: 'pointer' }} onClick={() => removeExpense_removeIncome('expense', expense.name)}><text style={{color: 'red'}}>X</text></buttton>
                                 </li>
                             )
                         })}
@@ -90,7 +97,7 @@ function ManageExpenses() {
                         {income.map(income => { //reads income state and maps each item to a list. just name now for testing
                             return (
                                 <li key={income.name}>${income.amount} - {income.category}: {income.name} - {income.date}
-                                    <buttton onClick={() => removeExpense_removeIncome('income', income.name)}>X</buttton>
+                                    <buttton style={{ paddingLeft: '10px', cursor: 'pointer' }}onClick={() => removeExpense_removeIncome('income', income.name)}><text style={{color: 'red'}}>X</text></buttton>
                                 </li>
                             )
                         })}

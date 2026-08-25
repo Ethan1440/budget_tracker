@@ -28,3 +28,7 @@ income or expense category)
 This session I am working towards the MVP, so I will pick up on the work from last time, and plan out a local backend I can use to save data. Time permitting I want to add a pie chart page that breaks down Income to expenses via pie charts.
 
 -we are going to ignore the recurring system for now. I will just delete income and expense items as they change.
+
+## Session 8/25/26
+-Get date  to shop on on each expense/income item
+-design table structure

@@ -45,7 +45,7 @@ function ManageCategories({ incomeCategories, expenseCategories, addIncomeCatego
 
     return (
         <div className="manage-categories">
-            <button className={`manage-categories-btn`} onClick={(e) => toggleForm(e)}>+ Manaage Categories</button>
+            <button className={`manage-categories-btn`} onClick={(e) => toggleForm(e)}>+ Manage Categories</button>
             {isFormOpen && <div className='manage-categories-form'>
                 <form onSubmit={(e) => handleAdd(e, type)}>
                     <label htmlFor="category-input">New Category: </label>
@@ -61,13 +61,13 @@ function ManageCategories({ incomeCategories, expenseCategories, addIncomeCatego
                 <ul className="manage-categories-list-income">
                     <h3>Income Categories</h3>
                     {incomeCategories.map(category => (
-                        <li key={category}>{category} <button onClick={(e) => handleRemove(e, 'income', category)}>X</button></li>
+                        <li key={category}>{category} <button style={{cursor: 'pointer'}} onClick={(e) => handleRemove(e, 'income', category)}><text style={{ fontSize: '12px', color: 'red'}}>X</text></button></li>
                     ))}
                 </ul>
                 <ul className="manage-categories-list-expense">
                     <h3>Expense Categories</h3>
                     {expenseCategories.map(category => (
-                        <li key={category}>{category} <button onClick={(e) => handleRemove(e, 'expense', category)}>X</button></li>
+                        <li key={category}>{category} <button style={{cursor: 'pointer'}} onClick={(e) => handleRemove(e, 'expense', category)}><text style={{ fontSize: '12px', color: 'red'}}>X</text></button></li>
                     ))}
                 </ul>
             </div>}
