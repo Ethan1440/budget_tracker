@@ -32,3 +32,10 @@ This session I am working towards the MVP, so I will pick up on the work from la
 ## Session 8/25/26
 -Get date  to shop on on each expense/income item
 -design table structure
+
+ADDED
+-unique constraint check in frontend to prevent duplicate item by (name, category, date)
+-added recurring state and toggle switch to items. Recurring list needs to be built
+
+Next time add:
+-ability to go back in months
