@@ -39,3 +39,7 @@ ADDED
 
 Next time add:
 -ability to go back in months
+
+## Session 8/31/26
+-adding ability to move forwards and backwards in months 
+-ensuring items marked recurring show up on every period until devleted from state

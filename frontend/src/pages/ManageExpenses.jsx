@@ -1,4 +1,5 @@
 import AddItemButton from '../components/addItemButton';
+import ExpenseWindowButton from '../components/expenseWindowButton';
 import ManageCategories from '../components/manageCategories';
 import { useState } from 'react';
 import React from 'react';
@@ -30,6 +31,10 @@ function ManageExpenses() {
     const [recurringExpenses, setRecurringExpenses] = useState([]) //State to store list of user recurring expenses. Each expense is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
     const [recurringIncome, setRecurringIncome] = useState([]) //State to store list of user recurring income. Each income is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
     const [netIncome, setNetIncome] = useState(0) //State to store the net income. Calculated as total income - total expenses. Updated whenever income or expenses are added or removed.
+    const [currentMonth, setCurrentMonth] = useState(currentDate.getMonth()) //State to store the current month. Used in expenseWindowButton to determine the current month.
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const longestMonthName = monthNames.reduce((longest, name) => name.length > longest.length ? name : longest);
+    const [currentYear, setCurrentYear] = useState(currentDate.getFullYear()) //State to store the current year. Used in expenseWindowButton to determine the current year.
 
     //Function will add an expense or income item to the state based on the type parameter.
     const addExpense_addIncome = (type, name, amount, category, date, recurring = false) => {
@@ -116,12 +121,25 @@ function ManageExpenses() {
         setNetIncome((totalIncome + totalRecurringIncome) - (totalExpenses + totalRecurringExpenses));
     }
 
+    const handleExpenseWindowChange = (month, year) => {
+        setCurrentMonth(month);
+        setCurrentYear(year);
+    }
+
     return (
         <div className="manage-expenses">
             <div className="manage-expenses-header">
                 <h1>Manage Expenses</h1>
-                <h2><span>Current Expense Window: {new Date().toLocaleDateString('en-US', { month: 'long' })}</span><span> Year {new Date().toLocaleDateString('en-US', { year: 'numeric' })}</span></h2>
-                <h2>Date: {new Date().toLocaleDateString('en-US')}</h2>
+                <h2 className="expense-window-nav">
+                    <ExpenseWindowButton updateState={handleExpenseWindowChange} direction='Previous' currentMonth={currentMonth} currentYear={currentYear} />
+                    <span style={{paddingLeft: '10px',fontWeight: 'bold', textDecoration: 'underline solid rgb(255, 255, 255) 3px', textDecorationSkipInk: 'none'}}>Current Expense Window</span>
+                    <span className="expense-window-month">
+                        <span className="expense-window-month-sizer" aria-hidden="true">: {longestMonthName} {currentYear}</span>
+                        <span className="expense-window-month-label">: {monthNames[currentMonth]} {currentYear}</span>
+                    </span>
+                    <ExpenseWindowButton updateState={handleExpenseWindowChange} direction='Next' currentMonth={currentMonth} currentYear={currentYear} />
+                </h2>
+                <h2 style={{paddingTop: '10px', paddingBottom: '10px'}}>Date: {new Date().toLocaleDateString('en-US')}</h2>
             </div>
             <div className="manage-expenses-categories">
                 <ManageCategories incomeCategories={incomeCategories} expenseCategories={expenseCategories} addIncomeCategory={addIncomeCategory} addExpenseCategory={addExpenseCategory} removeIncomeCategory={removeIncomeCategory} removeExpenseCategory={removeExpenseCategory} />

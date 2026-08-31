@@ -3,6 +3,28 @@
   text-align: left;
 }
 
+.expense-window-nav {
+  display: flex;
+  align-items: center;
+}
+
+.expense-window-month {
+  display: inline-grid;
+  justify-items: start;
+  padding-right: 10px;
+}
+
+.expense-window-month-sizer,
+.expense-window-month-label {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+
+.expense-window-month-sizer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .manage-expenses-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
