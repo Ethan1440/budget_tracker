@@ -10,13 +10,16 @@ function toMonthDayYear(isoDate) {
     return `${month}-${day}-${year}`;
 }
 
-// Check if item's month/year matches current month/year
-function isCurrentMonth(dateStr) {
-    // dateStr format: MM-DD-YYYY
-    const [month, day, year] = dateStr.split('-');
-    const itemDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    const today = new Date();
-    return itemDate.getMonth() === today.getMonth() && itemDate.getFullYear() === today.getFullYear();
+// Item dates are MM-DD-YYYY. month is 0-indexed (same as Date.getMonth()).
+function isInExpenseWindow(dateStr, month, year) {
+    const [itemMonth, , itemYear] = dateStr.split('-');
+    return parseInt(itemMonth, 10) - 1 === month && parseInt(itemYear, 10) === year;
+}
+
+// Non-recurring items only appear in the matching month/year. Recurring items appear in every window.
+function itemsForWindow(allItems, recurringItems, month, year) {
+    const inWindow = allItems.filter((item) => !item.recurring && isInExpenseWindow(item.date, month, year));
+    return [...inWindow, ...recurringItems];
 }
 
 function ManageExpenses() {
@@ -35,6 +38,8 @@ function ManageExpenses() {
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const longestMonthName = monthNames.reduce((longest, name) => name.length > longest.length ? name : longest);
     const [currentYear, setCurrentYear] = useState(currentDate.getFullYear()) //State to store the current year. Used in expenseWindowButton to determine the current year.
+    const [currWindowExpenses, setCurrWindowExpenses] = useState([]) //State to store the current window expenses. Used to display the expenses for the current window.
+    const [currWindowIncome, setCurrWindowIncome] = useState([]) //State to store the current window income. Used to display the income for the current window.
 
     //Function will add an expense or income item to the state based on the type parameter.
     const addExpense_addIncome = (type, name, amount, category, date, recurring = false) => {
@@ -78,10 +83,25 @@ function ManageExpenses() {
         setRecurringExpenses(recurringExpenseItems);
     }
 
+    const calculateNetIncome = (windowIncome, windowExpenses) => {
+        const totalIncome = windowIncome.reduce((acc, item) => acc + Number(item.amount), 0);
+        const totalExpenses = windowExpenses.reduce((acc, item) => acc + Number(item.amount), 0);
+        setNetIncome(totalIncome - totalExpenses);
+    }
+
     // useEffect to rebuild recurring items whenever income or expenses change
     React.useEffect(() => {
         buildRecurringItems(income, expenses);
     }, [income, expenses]);
+
+    // Rebuild the visible window and net income whenever items or the selected month/year change.
+    React.useEffect(() => {
+        const windowExpenses = itemsForWindow(expenses, recurringExpenses, currentMonth, currentYear);
+        const windowIncome = itemsForWindow(income, recurringIncome, currentMonth, currentYear);
+        setCurrWindowExpenses(windowExpenses);
+        setCurrWindowIncome(windowIncome);
+        calculateNetIncome(windowIncome, windowExpenses);
+    }, [expenses, income, recurringExpenses, recurringIncome, currentMonth, currentYear]);
 
     //remove items by name
     const removeExpense_removeIncome = (type, name) => {
@@ -112,15 +132,6 @@ function ManageExpenses() {
         setExpenseCategories(expenseCategories.filter(cat => cat !== category)); //filter out the category to remove from the list.
     }
 
-    const calculateNetIncome = (income, expenses, recurringIncome, recurringExpenses) => {
-        const totalIncome = income.reduce((acc, item) => acc + Number(item.amount), 0);
-        const totalExpenses = expenses.reduce((acc, item) => acc + Number(item.amount), 0);
-        const totalRecurringIncome = recurringIncome.reduce((acc, item) => acc + Number(item.amount), 0);
-        const totalRecurringExpenses = recurringExpenses.reduce((acc, item) => acc + Number(item.amount), 0);
-        
-        setNetIncome((totalIncome + totalRecurringIncome) - (totalExpenses + totalRecurringExpenses));
-    }
-
     const handleExpenseWindowChange = (month, year) => {
         setCurrentMonth(month);
         setCurrentYear(year);
@@ -132,10 +143,9 @@ function ManageExpenses() {
                 <h1>Manage Expenses</h1>
                 <h2 className="expense-window-nav">
                     <ExpenseWindowButton updateState={handleExpenseWindowChange} direction='Previous' currentMonth={currentMonth} currentYear={currentYear} />
-                    <span style={{paddingLeft: '10px',fontWeight: 'bold', textDecoration: 'underline solid rgb(255, 255, 255) 3px', textDecorationSkipInk: 'none'}}>Current Expense Window</span>
                     <span className="expense-window-month">
                         <span className="expense-window-month-sizer" aria-hidden="true">: {longestMonthName} {currentYear}</span>
-                        <span className="expense-window-month-label">: {monthNames[currentMonth]} {currentYear}</span>
+                        <span className="expense-window-month-label">{monthNames[currentMonth]} {currentYear}</span>
                     </span>
                     <ExpenseWindowButton updateState={handleExpenseWindowChange} direction='Next' currentMonth={currentMonth} currentYear={currentYear} />
                 </h2>
@@ -144,22 +154,15 @@ function ManageExpenses() {
             <div className="manage-expenses-categories">
                 <ManageCategories incomeCategories={incomeCategories} expenseCategories={expenseCategories} addIncomeCategory={addIncomeCategory} addExpenseCategory={addExpenseCategory} removeIncomeCategory={removeIncomeCategory} removeExpenseCategory={removeExpenseCategory} />
             </div>
-            <div className="manage-expenses-net-income">{netIncome > 0 ? '+' : '-'}${Math.abs(netIncome)} Net Income</div>
+            <div className={netIncome > 0 ? 'manage-expenses-net-income-positive' : netIncome < 0 ? 'manage-expenses-net-income-negative' : 'manage-expenses-net-income'}>{netIncome > 0 ? '+' : netIncome < 0 ? '-' : ''}${Math.abs(netIncome)} Net Income</div>
             <div className="manage-expenses-columns">
                 <section className="manage-expenses-column expenses-column">
                     <h2>Expenses</h2>
                     <AddItemButton type="expense" categories={expenseCategories} onAdd={addExpense_addIncome} />
                     <ul className="expenses-list">
-                        {expenses.filter(e => e.recurring === false ? isCurrentMonth(e.date) : false).map(expense => { //reads expenses state and maps each item to a list for current month only
+                        {currWindowExpenses.map(expense => { //reads expenses state and maps each item to a list for current month only
                             return (
                                 <li key={expense.name}>${expense.amount} - {expense.category}: {expense.name} - {expense.date}
-                                    <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('expense', expense.name)}><span style={{color: 'red'}}>X</span></button>
-                                </li>
-                            )
-                        })}
-                        {recurringExpenses.map(expense => { //reads recurring expenses state and maps each recurring item to a list
-                            return (
-                                <li key={expense.name}>${expense.amount} - {expense.category}: {expense.name} - {expense.date} (Recurring)
                                     <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('expense', expense.name)}><span style={{color: 'red'}}>X</span></button>
                                 </li>
                             )
@@ -170,16 +173,9 @@ function ManageExpenses() {
                     <h2>Income</h2>
                     <AddItemButton type="income" categories={incomeCategories} onAdd={addExpense_addIncome} />
                     <ul className="income-list">
-                        {income.filter(i => i.recurring === false ? isCurrentMonth(i.date) : false).map(incomeItem => { //reads income state and maps each item to a list for current month only
+                        {currWindowIncome.map(incomeItem => { //reads income state and maps each item to a list for current month only
                             return (
                                 <li key={incomeItem.name}>${incomeItem.amount} - {incomeItem.category}: {incomeItem.name} - {incomeItem.date}
-                                    <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('income', incomeItem.name)}><span style={{color: 'red'}}>X</span></button>
-                                </li>
-                            )
-                        })}
-                        {recurringIncome.map(incomeItem => { //reads recurring income state and maps each recurring item to a list
-                            return (
-                                <li key={incomeItem.name}>${incomeItem.amount} - {incomeItem.category}: {incomeItem.name} - {incomeItem.date} (Recurring)
                                     <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('income', incomeItem.name)}><span style={{color: 'red'}}>X</span></button>
                                 </li>
                             )
