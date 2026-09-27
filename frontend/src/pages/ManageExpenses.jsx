@@ -1,58 +1,66 @@
 import AddItemButton from '../components/addItemButton';
 import ExpenseWindowButton from '../components/expenseWindowButton';
 import ManageCategories from '../components/manageCategories';
-import { useState } from 'react';
-import React from 'react';
-
-// HTML date inputs use YYYY-MM-DD; budget items store MM-DD-YYYY.
-function toMonthDayYear(isoDate) {
-    const [year, month, day] = isoDate.split('-');
-    return `${month}-${day}-${year}`;
-}
-
-// Item dates are MM-DD-YYYY. month is 0-indexed (same as Date.getMonth()).
-function isInExpenseWindow(dateStr, month, year) {
-    const [itemMonth, , itemYear] = dateStr.split('-');
-    return parseInt(itemMonth, 10) - 1 === month && parseInt(itemYear, 10) === year;
-}
-
-// Non-recurring items only appear in the matching month/year. Recurring items appear in every window.
-function itemsForWindow(allItems, recurringItems, month, year) {
-    const inWindow = allItems.filter((item) => !item.recurring && isInExpenseWindow(item.date, month, year));
-    return [...inWindow, ...recurringItems];
-}
+import { createCategory, createIncomeOrExpense, deleteIncomeOrExpense, getCategories, getIncomeOrExpenses, splitIncomeAndExpenses, toClientItem } from '../api/budgetApi';
+import { itemsForWindow, toMonthDayYear } from '../budgetDates';
+import { useEffect, useState } from 'react';
 
 function ManageExpenses() {
 
-    //States to store user data
-    //Users have the ability to add income/expense items to state. All items must have an associated category.
-    const [expenses, setExpense] = useState([]) //State to store list of user expenses. Each expense is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
-    const [income, setIncome] = useState([]) //State to store list of user income. Each income is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
-    const [incomeCategories, setIncomeCategories] = useState(['Salary', 'Investments', 'Gifts', 'Other']) //State to store list of user categories. Each category is an object with the following properties: { name: string, color: string }
-    const [expenseCategories, setExpenseCategories] = useState(['Housing', 'Auto', 'Groceries', 'Social', 'Entertainment', 'Other', 'One Off Expense']) //State to store list of user categories. Each category is an object with the following properties: { name: string, color: string }
-    const [currentDate, setCurrentDate] = useState(new Date()) //State to store the current date. Used to Check for expenses/income items witin the same month and year as the current date.
-    const [recurringExpenses, setRecurringExpenses] = useState([]) //State to store list of user recurring expenses. Each expense is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
-    const [recurringIncome, setRecurringIncome] = useState([]) //State to store list of user recurring income. Each income is an object with the following properties: { name: string, category: string, amount: number, date: string (MM-DD-YYYY) }
-    const [netIncome, setNetIncome] = useState(0) //State to store the net income. Calculated as total income - total expenses. Updated whenever income or expenses are added or removed.
-    const [currentMonth, setCurrentMonth] = useState(currentDate.getMonth()) //State to store the current month. Used in expenseWindowButton to determine the current month.
+    //States to store user data loaded from the API.
+    //Users have the ability to add income/expense items. All items must have an associated category.
+    const [expenses, setExpense] = useState([]) //Each expense: { id, name, category, amount, date (MM-DD-YYYY), recurring }
+    const [income, setIncome] = useState([]) //Each income item: { id, name, category, amount, date (MM-DD-YYYY), recurring }
+    const [categoryRows, setCategoryRows] = useState([]) //Rows from Categories. Names shown in the lists are derived below.
+    const [isLoading, setIsLoading] = useState(true)
+    const [loadError, setLoadError] = useState('')
+    const incomeCategories = categoryRows.filter((row) => row.income_category).map((row) => row.category)
+    const expenseCategories = categoryRows.filter((row) => row.expense_category).map((row) => row.category)
+    const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth())
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const longestMonthName = monthNames.reduce((longest, name) => name.length > longest.length ? name : longest);
-    const [currentYear, setCurrentYear] = useState(currentDate.getFullYear()) //State to store the current year. Used in expenseWindowButton to determine the current year.
-    const [currWindowExpenses, setCurrWindowExpenses] = useState([]) //State to store the current window expenses. Used to display the expenses for the current window.
-    const [currWindowIncome, setCurrWindowIncome] = useState([]) //State to store the current window income. Used to display the income for the current window.
+    const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear())
+    const recurringExpenses = expenses.filter((item) => item.recurring === true)
+    const recurringIncome = income.filter((item) => item.recurring === true)
+    const currWindowExpenses = itemsForWindow(expenses, recurringExpenses, currentMonth, currentYear)
+    const currWindowIncome = itemsForWindow(income, recurringIncome, currentMonth, currentYear)
+    const netIncome = currWindowIncome.reduce((total, item) => total + Number(item.amount), 0) - currWindowExpenses.reduce((total, item) => total + Number(item.amount), 0)
 
-    //Function will add an expense or income item to the state based on the type parameter.
-    const addExpense_addIncome = (type, name, amount, category, date, recurring = false) => {
-        //validate the category exists in income or expense categories
+    //Function will add an expense or income item based on the type parameter.
+    const addExpense_addIncome = async (type, name, amount, category, date, recurring = false) => {
         const formattedDate = toMonthDayYear(date);
+        const isExpense = type === 'expense';
+        const categoryNames = isExpense ? expenseCategories : incomeCategories;
         //Expense/income item is unique by (name, category, date). If an item with the same name, category, and date already exists, do not add it again.
-        if (type === 'expense' && expenseCategories.includes(category) && checkExpenseIncomeUnique(type, name, category, formattedDate)) {
-            setExpense([...expenses, { name, amount, category, date: formattedDate, recurring }]); //...expenses is the state of expenses before the new expense is added. then the update function is called and the new item added to the state var.
-        } else if (type === 'income' && incomeCategories.includes(category) && checkExpenseIncomeUnique(type, name, category, formattedDate)) {
-            setIncome([...income, { name, amount, category, date: formattedDate, recurring }]);
-        } else {
+        if ((type !== 'expense' && type !== 'income') || !categoryNames.includes(category) || !checkExpenseIncomeUnique(type, name, category, formattedDate)) {
             alert('Item is not unique or category does not exist. Please check your inputs and try again.');
-            return;
+            return false;
+        }
+
+        const categoryRow = categoryRows.find((row) => row.category === category && (isExpense ? row.expense_category : row.income_category));
+        if (!categoryRow) {
+            alert('Category does not exist. Please check your inputs and try again.');
+            return false;
+        }
+
+        try {
+            const created = await createIncomeOrExpense({
+                name,
+                category: categoryRow.id,
+                amount: Number(amount),
+                recurring,
+                item_date: formattedDate,
+            });
+            const item = toClientItem(created);
+            if (isExpense) {
+                setExpense((items) => [...items, item]);
+            } else {
+                setIncome((items) => [...items, item]);
+            }
+            return true;
+        } catch (error) {
+            alert(error.message);
+            return false;
         }
     } //end addExpense_addIncomes
 
@@ -75,61 +83,86 @@ function ManageExpenses() {
         return true;
     }
 
-    //Builds list of recurring items. Recurring items appear every month. Non-recurring items only appear if month/year matches current date.
-    const buildRecurringItems = (allIncome, allExpenses) => {
-        const recurringIncomeItems = allIncome.filter(item => item.recurring === true);
-        const recurringExpenseItems = allExpenses.filter(item => item.recurring === true);
-        setRecurringIncome(recurringIncomeItems);
-        setRecurringExpenses(recurringExpenseItems);
-    }
+    useEffect(() => {
+        let cancelled = false;
+        async function loadBudget() {
+            try {
+                const [categories, items] = await Promise.all([getCategories(), getIncomeOrExpenses()]);
+                if (cancelled) {
+                    return;
+                }
+                const split = splitIncomeAndExpenses(items);
+                setCategoryRows(categories);
+                setExpense(split.expenses);
+                setIncome(split.income);
+                setLoadError('');
+            } catch (error) {
+                if (!cancelled) {
+                    setLoadError(error.message);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoading(false);
+                }
+            }
+        }
+        loadBudget();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
-    const calculateNetIncome = (windowIncome, windowExpenses) => {
-        const totalIncome = windowIncome.reduce((acc, item) => acc + Number(item.amount), 0);
-        const totalExpenses = windowExpenses.reduce((acc, item) => acc + Number(item.amount), 0);
-        setNetIncome(totalIncome - totalExpenses);
-    }
-
-    // useEffect to rebuild recurring items whenever income or expenses change
-    React.useEffect(() => {
-        buildRecurringItems(income, expenses);
-    }, [income, expenses]);
-
-    // Rebuild the visible window and net income whenever items or the selected month/year change.
-    React.useEffect(() => {
-        const windowExpenses = itemsForWindow(expenses, recurringExpenses, currentMonth, currentYear);
-        const windowIncome = itemsForWindow(income, recurringIncome, currentMonth, currentYear);
-        setCurrWindowExpenses(windowExpenses);
-        setCurrWindowIncome(windowIncome);
-        calculateNetIncome(windowIncome, windowExpenses);
-    }, [expenses, income, recurringExpenses, recurringIncome, currentMonth, currentYear]);
-
-    //remove items by name
-    const removeExpense_removeIncome = (type, name) => {
-        if (type === 'expense') {
-            setExpense(expenses.filter(expense => expense.name !== name));
-        } else if (type === 'income') {
-            setIncome(income.filter(income => income.name !== name));
-        } else {
+    const removeExpense_removeIncome = async (type, item) => {
+        if (type !== 'expense' && type !== 'income') {
             alert('Invalid type. Please use "expense" or "income".');
             return;
         }
-    } //end removeExpense_removeIncome
+        try {
+            await deleteIncomeOrExpense(item.id);
+            if (type === 'expense') {
+                setExpense((items) => items.filter((expense) => expense.id !== item.id));
+            } else {
+                setIncome((items) => items.filter((incomeItem) => incomeItem.id !== item.id));
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    }
 
     //manage income and expense categories
-    const addIncomeCategory = (category) => {
-        setIncomeCategories([...incomeCategories, category]);
+    const addIncomeCategory = async (category) => {
+        try {
+            const created = await createCategory({
+                category,
+                income_category: true,
+                expense_category: false,
+            });
+            setCategoryRows((rows) => [...rows, created]);
+        } catch (error) {
+            alert(error.message);
+        }
     }
 
     const removeIncomeCategory = (category) => {
-        setIncomeCategories(incomeCategories.filter(cat => cat !== category)); //filter out the category to remove from the list.
+        // Removal stays on this page until a delete route exists.
+        setCategoryRows((rows) => rows.filter((row) => row.category !== category || !row.income_category));
     }
 
-    const addExpenseCategory = (category) => {
-        setExpenseCategories([...expenseCategories, category]);
+    const addExpenseCategory = async (category) => {
+        try {
+            const created = await createCategory({
+                category,
+                income_category: false,
+                expense_category: true,
+            });
+            setCategoryRows((rows) => [...rows, created]);
+        } catch (error) {
+            alert(error.message);
+        }
     }
 
     const removeExpenseCategory = (category) => {
-        setExpenseCategories(expenseCategories.filter(cat => cat !== category)); //filter out the category to remove from the list.
+        setCategoryRows((rows) => rows.filter((row) => row.category !== category || !row.expense_category));
     }
 
     const handleExpenseWindowChange = (month, year) => {
@@ -150,6 +183,8 @@ function ManageExpenses() {
                     <ExpenseWindowButton updateState={handleExpenseWindowChange} direction='Next' currentMonth={currentMonth} currentYear={currentYear} />
                 </h2>
                 <h2 style={{paddingTop: '10px', paddingBottom: '10px'}}>Date: {new Date().toLocaleDateString('en-US')}</h2>
+                {isLoading && <p>Loading budget data…</p>}
+                {loadError && <p>{loadError}</p>}
             </div>
             <div className="manage-expenses-categories">
                 <ManageCategories incomeCategories={incomeCategories} expenseCategories={expenseCategories} addIncomeCategory={addIncomeCategory} addExpenseCategory={addExpenseCategory} removeIncomeCategory={removeIncomeCategory} removeExpenseCategory={removeExpenseCategory} />
@@ -162,8 +197,8 @@ function ManageExpenses() {
                     <ul className="expenses-list">
                         {currWindowExpenses.map(expense => { //reads expenses state and maps each item to a list for current month only
                             return (
-                                <li key={expense.name}>${expense.amount} - {expense.category}: {expense.name} - {expense.date}
-                                    <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('expense', expense.name)}><span style={{color: 'red'}}>X</span></button>
+                                <li key={expense.id}>${expense.amount} - {expense.category}: {expense.name} - {expense.date}
+                                    <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('expense', expense)}><span style={{color: 'red'}}>X</span></button>
                                 </li>
                             )
                         })}
@@ -175,8 +210,8 @@ function ManageExpenses() {
                     <ul className="income-list">
                         {currWindowIncome.map(incomeItem => { //reads income state and maps each item to a list for current month only
                             return (
-                                <li key={incomeItem.name}>${incomeItem.amount} - {incomeItem.category}: {incomeItem.name} - {incomeItem.date}
-                                    <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('income', incomeItem.name)}><span style={{color: 'red'}}>X</span></button>
+                                <li key={incomeItem.id}>${incomeItem.amount} - {incomeItem.category}: {incomeItem.name} - {incomeItem.date}
+                                    <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('income', incomeItem)}><span style={{color: 'red'}}>X</span></button>
                                 </li>
                             )
                         })}

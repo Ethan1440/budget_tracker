@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FormGroup, FormControlLabel, Switch } from '@mui/material';
 
 // <input type="date"> requires YYYY-MM-DD. Use local date parts so UTC offset cannot shift "today".
@@ -15,24 +15,33 @@ function AddItemButton({ type, categories, onAdd }) {
     const [isFormOpen, setFormOpen] = useState(false); //State to control the form visibility. defaults to hidden.
     const [name, setName] = useState(''); //State to control the (expense/income)name input value. defaults to empty string.
     const [category, setCategory] = useState(categories[0] ?? ''); //State to control the category input value. defaults to first item in categories array or empty string when categories is null.
+
+    // Categories arrive after mount. Keep the selection on a real option so submit does not send an empty category.
+    useEffect(() => {
+        if (categories.includes(category)) {
+            return;
+        }
+        setCategory(categories[0] ?? '');
+    }, [categories, category]);
     const [amount, setAmount] = useState(0.0); //State to control the amount input value. defaults` to empty string.
     const [date, setDate] = useState(getLocalIsoDate()); //State to control the date input value. defaults to current date.
     const [isRecurring, setIsRecurring] = useState(true); //State to control the recurring toggle switch. defaults to true.
     
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onAdd(type, name, amount, category, date, isRecurring); //store state data in ManageExpenses using .addExpense_addIncome
+        const added = await onAdd(type, name, amount, category, date, isRecurring);
+        if (!added) {
+            return;
+        }
 
-        //reset the form
         setName('');
         setCategory(categories[0] ?? '');
         setAmount('');
         setDate(getLocalIsoDate());
         setIsRecurring(true);
         setFormOpen(false);
-
-    } //TODO: Implement the form submission logic
+    }
     const handleCancel = () => {
         //reset the form
         setName('');
@@ -61,7 +70,7 @@ function AddItemButton({ type, categories, onAdd }) {
                         <input id="date-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
                         <label htmlFor="recurring-input">Recurring: </label>
                         <FormGroup>
-                            <FormControlLabel control={<Switch checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} defaultChecked />} />
+                            <FormControlLabel control={<Switch checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />} />
                         </FormGroup>
                         <div style={{ display: "flex", flexDirection: "row", gap: "10px" }}>
                             <button type="submit">Add</button>
