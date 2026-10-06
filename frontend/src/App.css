@@ -21,8 +21,122 @@
   flex: 1;
   width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
+  box-sizing: border-box;
+  padding: 8px 32px 32px;
+  text-align: left;
+  color: #fff;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chart-breakdown-month {
+  margin: 20px 0 24px;
+  color: #fff;
+  text-align: left;
+}
+
+.chart-breakdown-message {
+  color: #fff;
+}
+
+.chart-breakdown-charts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.chart-breakdown-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.chart-breakdown-body {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  width: 100%;
+}
+
+.chart-breakdown-bar-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chart-breakdown-savings {
+  margin-top: 32px;
+  width: 100%;
+}
+
+.chart-breakdown-savings-chart {
+  width: 100%;
+}
+
+.chart-breakdown-panel h2 {
+  margin: 0 0 8px;
+  color: #fff;
+  text-align: center;
+}
+
+.chart-breakdown-ratio {
+  margin: 12px 0 0;
+  color: #fff;
+}
+
+.chart-breakdown-legend {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  color: #fff;
+}
+
+.chart-breakdown-legend li {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-breakdown-legend-with-percent li {
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+}
+
+.chart-breakdown-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.chart-breakdown-legend-label,
+.chart-breakdown-legend-amount {
+  color: #fff;
+}
+
+.chart-breakdown text.MuiPieChart-arcLabel,
+.chart-breakdown .MuiBarChart-label,
+.chart-breakdown .MuiChartsAxis-tickLabel {
+  fill: #fff !important;
+}
+
+.chart-breakdown-legend-amount,
+.chart-breakdown-legend-percent {
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .chart-breakdown-charts {
+    grid-template-columns: 1fr;
+  }
 }
 
 .manage-expenses-net-income-positive {

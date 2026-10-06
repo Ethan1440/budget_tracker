@@ -1,3 +1,15 @@
+export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+export function monthYearLabel(month, year) {
+  return `${MONTH_NAMES[month]} ${year}`;
+}
+
+// offset is in months. -1 is the previous month, including the year boundary.
+export function shiftMonth(month, year, offset) {
+  const shifted = new Date(year, month + offset, 1);
+  return { month: shifted.getMonth(), year: shifted.getFullYear() };
+}
+
 // HTML date inputs use YYYY-MM-DD; budget items store MM-DD-YYYY.
 export function toMonthDayYear(isoDate) {
   const [year, month, day] = isoDate.split('-');

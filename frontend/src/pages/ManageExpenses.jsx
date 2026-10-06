@@ -2,7 +2,8 @@ import AddItemButton from '../components/addItemButton';
 import ExpenseWindowButton from '../components/expenseWindowButton';
 import ManageCategories from '../components/manageCategories';
 import { createCategory, createIncomeOrExpense, deleteIncomeOrExpense, getCategories, getIncomeOrExpenses, splitIncomeAndExpenses, toClientItem } from '../api/budgetApi';
-import { itemsForWindow, toMonthDayYear } from '../budgetDates';
+import { itemsForWindow, MONTH_NAMES, toMonthDayYear } from '../budgetDates';
+import { useBudgetWindow } from '../budgetWindow';
 import { useEffect, useState } from 'react';
 
 function ManageExpenses() {
@@ -16,15 +17,15 @@ function ManageExpenses() {
     const [loadError, setLoadError] = useState('')
     const incomeCategories = categoryRows.filter((row) => row.income_category).map((row) => row.category)
     const expenseCategories = categoryRows.filter((row) => row.expense_category).map((row) => row.category)
-    const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth())
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const longestMonthName = monthNames.reduce((longest, name) => name.length > longest.length ? name : longest);
-    const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear())
+    const { currentMonth, currentYear, setWindow } = useBudgetWindow()
+    const longestMonthName = MONTH_NAMES.reduce((longest, name) => name.length > longest.length ? name : longest);
     const recurringExpenses = expenses.filter((item) => item.recurring === true)
     const recurringIncome = income.filter((item) => item.recurring === true)
     const currWindowExpenses = itemsForWindow(expenses, recurringExpenses, currentMonth, currentYear)
     const currWindowIncome = itemsForWindow(income, recurringIncome, currentMonth, currentYear)
-    const netIncome = currWindowIncome.reduce((total, item) => total + Number(item.amount), 0) - currWindowExpenses.reduce((total, item) => total + Number(item.amount), 0)
+    const windowIncomeTotal = currWindowIncome.reduce((total, item) => total + Number(item.amount), 0)
+    const windowExpenseTotal = currWindowExpenses.reduce((total, item) => total + Number(item.amount), 0)
+    const netIncome = Math.round((windowIncomeTotal - windowExpenseTotal) * 100) / 100
 
     //Function will add an expense or income item based on the type parameter.
     const addExpense_addIncome = async (type, name, amount, category, date, recurring = false) => {
@@ -165,9 +166,13 @@ function ManageExpenses() {
         setCategoryRows((rows) => rows.filter((row) => row.category !== category || !row.expense_category));
     }
 
+    const itemSummary = (item) => {
+        const summary = `$${item.amount} - ${item.category}: ${item.name}`;
+        return item.recurring ? summary : `${summary} - ${item.date}`;
+    }
+
     const handleExpenseWindowChange = (month, year) => {
-        setCurrentMonth(month);
-        setCurrentYear(year);
+        setWindow(month, year);
     }
 
     return (
@@ -178,7 +183,7 @@ function ManageExpenses() {
                     <ExpenseWindowButton updateState={handleExpenseWindowChange} direction='Previous' currentMonth={currentMonth} currentYear={currentYear} />
                     <span className="expense-window-month">
                         <span className="expense-window-month-sizer" aria-hidden="true">: {longestMonthName} {currentYear}</span>
-                        <span className="expense-window-month-label">{monthNames[currentMonth]} {currentYear}</span>
+                        <span className="expense-window-month-label">{MONTH_NAMES[currentMonth]} {currentYear}</span>
                     </span>
                     <ExpenseWindowButton updateState={handleExpenseWindowChange} direction='Next' currentMonth={currentMonth} currentYear={currentYear} />
                 </h2>
@@ -197,7 +202,7 @@ function ManageExpenses() {
                     <ul className="expenses-list">
                         {currWindowExpenses.map(expense => { //reads expenses state and maps each item to a list for current month only
                             return (
-                                <li key={expense.id}>${expense.amount} - {expense.category}: {expense.name} - {expense.date}
+                                <li key={expense.id}>{itemSummary(expense)}
                                     <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('expense', expense)}><span style={{color: 'red'}}>X</span></button>
                                 </li>
                             )
@@ -210,7 +215,7 @@ function ManageExpenses() {
                     <ul className="income-list">
                         {currWindowIncome.map(incomeItem => { //reads income state and maps each item to a list for current month only
                             return (
-                                <li key={incomeItem.id}>${incomeItem.amount} - {incomeItem.category}: {incomeItem.name} - {incomeItem.date}
+                                <li key={incomeItem.id}>{itemSummary(incomeItem)}
                                     <button style={{ paddingLeft: '10px', cursor: 'pointer', background: 'none', border: 'none' }} onClick={() => removeExpense_removeIncome('income', incomeItem)}><span style={{color: 'red'}}>X</span></button>
                                 </li>
                             )
