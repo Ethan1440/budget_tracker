@@ -16,6 +16,7 @@ const SAVINGS_CHART_HEIGHT = 260;
 const SAVINGS_AXIS_HEADROOM = 1.25;
 const SAVINGS_COLOR = '#22c55e';
 const LOSS_COLOR = '#ef4444';
+const LEGEND_VISIBLE_ROWS = 8;
 
 function sumAmounts(items) {
     return items.reduce((total, item) => total + Number(item.amount), 0);
@@ -84,17 +85,50 @@ function withSliceColors(slices) {
     }));
 }
 
-function SliceList({ items, showPercent = false }) {
-    const total = items.reduce((sum, item) => sum + Number(item.value), 0);
-    const legendClass = showPercent ? 'chart-breakdown-legend chart-breakdown-legend-with-percent' : 'chart-breakdown-legend';
+function slicesByItem(items) {
+    return withSliceColors(
+        items
+            .filter((item) => Number(item.amount) > 0)
+            .map((item) => ({
+                id: item.id,
+                value: Number(item.amount),
+                label: item.name,
+            })),
+    );
+}
+
+function SliceFields({ item, showPercent, total }) {
     return (
-        <ul className={legendClass}>
+        <>
+            <span className="chart-breakdown-swatch" style={{ backgroundColor: item.color }} />
+            <span className="chart-breakdown-legend-label">{item.label}</span>
+            <span className="chart-breakdown-legend-amount">${formatAmount(item.value)}</span>
+            {showPercent && <span className="chart-breakdown-legend-percent">{formatPercent(item.value, total)}</span>}
+        </>
+    );
+}
+
+function SliceList({ items, showPercent = false, onSelect, visibleRowLimit }) {
+    const total = items.reduce((sum, item) => sum + Number(item.value), 0);
+    const legendClass = [
+        'chart-breakdown-legend',
+        showPercent ? 'chart-breakdown-legend-with-percent' : '',
+        visibleRowLimit ? 'chart-breakdown-legend-scroll' : '',
+    ].filter(Boolean).join(' ');
+    const style = visibleRowLimit ? { '--chart-breakdown-legend-rows': visibleRowLimit } : undefined;
+    return (
+        <ul className={legendClass} style={style}>
             {items.map((item) => (
                 <li key={item.id}>
-                    <span className="chart-breakdown-swatch" style={{ backgroundColor: item.color }} />
-                    <span className="chart-breakdown-legend-label">{item.label}</span>
-                    <span className="chart-breakdown-legend-amount">${formatAmount(item.value)}</span>
-                    {showPercent && <span className="chart-breakdown-legend-percent">{formatPercent(item.value, total)}</span>}
+                    {onSelect ? (
+                        <button type="button" className="chart-breakdown-legend-row" onClick={() => onSelect(item)}>
+                            <SliceFields item={item} showPercent={showPercent} total={total} />
+                        </button>
+                    ) : (
+                        <div className="chart-breakdown-legend-row">
+                            <SliceFields item={item} showPercent={showPercent} total={total} />
+                        </div>
+                    )}
                 </li>
             ))}
         </ul>
@@ -225,15 +259,33 @@ function SavingsBarChart({ months }) {
     );
 }
 
-function BreakdownChart({ title, data, showPercent = false, note }) {
+function BreakdownChart({ title, data, showPercent = false, note, chartKey, onSliceSelect, onReset, selectedCategory, legendRowLimit }) {
     return (
         <section className="chart-breakdown-panel">
-            <h2>{title}</h2>
+            {onReset ? (
+                <div className="chart-breakdown-heading">
+                    <h2>{title}</h2>
+                    <button type="button" className="chart-breakdown-reset" onClick={onReset}>
+                        Reset
+                    </button>
+                </div>
+            ) : (
+                <h2>{title}</h2>
+            )}
+            {selectedCategory && <p className="chart-breakdown-selected-category">{selectedCategory}</p>}
             <div className="chart-breakdown-body">
                 <PieChart
+                    key={chartKey}
                     width={CHART_WIDTH}
                     height={CHART_HEIGHT}
                     hideLegend
+                    skipAnimation={Boolean(chartKey)}
+                    onItemClick={onSliceSelect ? (_event, itemIdentifier) => {
+                        const slice = data[itemIdentifier.dataIndex];
+                        if (slice) {
+                            onSliceSelect(slice);
+                        }
+                    } : undefined}
                     series={[{
                         arcLabel: (item) => `$${formatAmount(item.value)}`,
                         arcLabelMinAngle: 20,
@@ -243,8 +295,17 @@ function BreakdownChart({ title, data, showPercent = false, note }) {
                         outerRadius: CHART_OUTER_RADIUS,
                         data,
                     }]}
+                    sx={onSliceSelect ? {
+                        '& .MuiPieArc-root': { cursor: 'pointer' },
+                        '& .MuiPieArcLabel-root': { pointerEvents: 'none' },
+                    } : undefined}
                 />
-                <SliceList items={data} showPercent={showPercent} />
+                <SliceList
+                    items={data}
+                    showPercent={showPercent}
+                    onSelect={onSliceSelect}
+                    visibleRowLimit={legendRowLimit}
+                />
             </div>
             {note && <p className="chart-breakdown-ratio">{note}</p>}
         </section>
@@ -254,8 +315,10 @@ function BreakdownChart({ title, data, showPercent = false, note }) {
 function ChartBreakDown() {
     const { currentMonth, currentYear } = useBudgetWindow();
     const monthLabel = monthYearLabel(currentMonth, currentYear);
+    const [expenseItems, setExpenseItems] = useState([]);
     const [expenseCategoryData, setExpenseCategoryData] = useState([]);
     const [incomeCategoryData, setIncomeCategoryData] = useState([]);
+    const [selectedExpenseCategory, setSelectedExpenseCategory] = useState(null);
     const [savingsMonths, setSavingsMonths] = useState([]);
     const [loadError, setLoadError] = useState('');
 
@@ -270,7 +333,7 @@ function ChartBreakDown() {
                 const split = splitIncomeAndExpenses(items);
                 const recurringExpenses = split.expenses.filter((item) => item.recurring);
                 const recurringIncome = split.income.filter((item) => item.recurring);
-                const windowExpenses = itemsForWindow(split.expenses, recurringExpenses, currentMonth, currentYear);
+                const expensesInWindow = itemsForWindow(split.expenses, recurringExpenses, currentMonth, currentYear);
                 const windowIncome = itemsForWindow(split.income, recurringIncome, currentMonth, currentYear);
                 const months = Array.from({ length: SAVINGS_MONTH_COUNT }, (_, index) => {
                     const shifted = shiftMonth(currentMonth, currentYear, index - (SAVINGS_MONTH_COUNT - 1));
@@ -281,8 +344,10 @@ function ChartBreakDown() {
                         saved: sumAmounts(income) - sumAmounts(expenses),
                     };
                 });
-                setExpenseCategoryData(withSliceColors(slicesByCategory(windowExpenses)));
+                setExpenseItems(expensesInWindow);
+                setExpenseCategoryData(withSliceColors(slicesByCategory(expensesInWindow)));
                 setIncomeCategoryData(withSliceColors(slicesByCategory(windowIncome)));
+                setSelectedExpenseCategory(null);
                 setSavingsMonths(months);
                 setLoadError('');
             } catch (error) {
@@ -301,6 +366,9 @@ function ChartBreakDown() {
     const expenseTotal = expenseCategoryData.reduce((sum, slice) => sum + Number(slice.value), 0);
     const incomeTotal = incomeCategoryData.reduce((sum, slice) => sum + Number(slice.value), 0);
     const incomeShareBars = incomeTotal > 0 ? spendingBars(expenseCategoryData, incomeTotal) : [];
+    const expenseChartData = selectedExpenseCategory
+        ? slicesByItem(expenseItems.filter((item) => item.category === selectedExpenseCategory))
+        : expenseCategoryData;
 
     return (
         <div className="chart-breakdown">
@@ -318,7 +386,16 @@ function ChartBreakDown() {
                         />
                     )}
                     {expenseCategoryData.length > 0 && (
-                        <BreakdownChart title="Expenses" data={expenseCategoryData} showPercent />
+                        <BreakdownChart
+                            title="Expenses"
+                            data={expenseChartData}
+                            showPercent
+                            chartKey={selectedExpenseCategory ?? 'overview'}
+                            legendRowLimit={LEGEND_VISIBLE_ROWS}
+                            selectedCategory={selectedExpenseCategory}
+                            onSliceSelect={selectedExpenseCategory ? undefined : (slice) => setSelectedExpenseCategory(slice.label)}
+                            onReset={selectedExpenseCategory ? () => setSelectedExpenseCategory(null) : undefined}
+                        />
                     )}
                     {incomeCategoryData.length > 0 && (
                         <BreakdownChart title="Income" data={incomeCategoryData} showPercent />
