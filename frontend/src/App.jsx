@@ -5,6 +5,7 @@ import Navbar from './components/navbar';
 import ChartBreakDown from './pages/ChartBreakDown';
 import { BudgetWindowProvider } from './budgetWindow';
 import { Routes, Route } from 'react-router-dom';
+import SavingsGoal from './pages/savingsGoal';
 
 function App() {
 
@@ -17,6 +18,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/manage-expenses" element={<ManageExpenses />} />
             <Route path="/chart-breakdown" element={<ChartBreakDown />} />
+            <Route path="/savings-goal-tracker" element={<SavingsGoal />} />
           </Routes>
         </main>
       </div>
