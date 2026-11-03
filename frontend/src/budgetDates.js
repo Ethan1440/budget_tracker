@@ -22,8 +22,18 @@ export function isInExpenseWindow(dateStr, month, year) {
   return parseInt(itemMonth, 10) - 1 === month && parseInt(itemYear, 10) === year;
 }
 
-// Non-recurring items only appear in the matching month/year. Recurring items appear in every window.
+// Recurring items begin in the month of their date and continue into later months.
+export function isOnOrAfterItemMonth(dateStr, month, year) {
+  const [itemMonth, , itemYear] = dateStr.split('-');
+  const startIndex = parseInt(itemYear, 10) * 12 + (parseInt(itemMonth, 10) - 1);
+  const windowIndex = year * 12 + month;
+  return windowIndex >= startIndex;
+}
+
+// Non-recurring items only appear in the matching month/year.
+// Recurring items appear in the month they were added and every month after that.
 export function itemsForWindow(allItems, recurringItems, month, year) {
   const inWindow = allItems.filter((item) => !item.recurring && isInExpenseWindow(item.date, month, year));
-  return [...inWindow, ...recurringItems];
+  const recurringInWindow = recurringItems.filter((item) => isOnOrAfterItemMonth(item.date, month, year));
+  return [...inWindow, ...recurringInWindow];
 }
