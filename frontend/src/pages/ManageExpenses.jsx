@@ -4,6 +4,7 @@ import ManageCategories from '../components/manageCategories';
 import { createCategory, createIncomeOrExpense, deleteIncomeOrExpense, getCategories, getIncomeOrExpenses, splitIncomeAndExpenses, toClientItem } from '../api/budgetApi';
 import { itemsForWindow, MONTH_NAMES, toMonthDayYear } from '../budgetDates';
 import { useBudgetWindow } from '../budgetWindow';
+import { useCategoryColorAssignments } from '../categoryColors';
 import { useEffect, useState } from 'react';
 
 function ManageExpenses() {
@@ -18,6 +19,7 @@ function ManageExpenses() {
     const incomeCategories = categoryRows.filter((row) => row.income_category).map((row) => row.category)
     const expenseCategories = categoryRows.filter((row) => row.expense_category).map((row) => row.category)
     const { currentMonth, currentYear, setWindow } = useBudgetWindow()
+    const { noteIncomeCategories, noteExpenseCategories } = useCategoryColorAssignments()
     const longestMonthName = MONTH_NAMES.reduce((longest, name) => name.length > longest.length ? name : longest);
     const recurringExpenses = expenses.filter((item) => item.recurring === true)
     const recurringIncome = income.filter((item) => item.recurring === true)
@@ -140,6 +142,7 @@ function ManageExpenses() {
                 expense_category: false,
             });
             setCategoryRows((rows) => [...rows, created]);
+            noteIncomeCategories([created.category]);
         } catch (error) {
             alert(error.message);
         }
@@ -158,6 +161,7 @@ function ManageExpenses() {
                 expense_category: true,
             });
             setCategoryRows((rows) => [...rows, created]);
+            noteExpenseCategories([created.category]);
         } catch (error) {
             alert(error.message);
         }

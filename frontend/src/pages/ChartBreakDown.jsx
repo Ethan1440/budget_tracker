@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { getIncomeOrExpenses, splitIncomeAndExpenses } from '../api/budgetApi';
-import { itemsForWindow, monthYearLabel, shiftMonth } from '../budgetDates';
+import { itemsForWindow, MONTH_NAMES, monthYearLabel, shiftMonth } from '../budgetDates';
 import { useBudgetWindow } from '../budgetWindow';
-
-const SLICE_COLORS = ['#7c5cff', '#3d8bfd', '#2fbf71', '#f5a524', '#f0616d', '#2ec4d6', '#e879f9', '#a3e635', '#fb923c', '#94a3b8'];
+import { CATEGORY_COLORS, useCategoryColorAssignments } from '../categoryColors';
+import ExpenseWindowButton from '../components/expenseWindowButton';
 const CHART_WIDTH = 180;
 const CHART_HEIGHT = 170;
 const CHART_OUTER_RADIUS = 68;
@@ -78,10 +78,17 @@ function slicesByCategory(items) {
         .map(([label, value], id) => ({ id, value, label }));
 }
 
+function withCategoryColors(slices, colorForCategory) {
+    return slices.map((slice) => ({
+        ...slice,
+        color: colorForCategory(slice.label),
+    }));
+}
+
 function withSliceColors(slices) {
     return slices.map((slice, index) => ({
         ...slice,
-        color: SLICE_COLORS[index % SLICE_COLORS.length],
+        color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
     }));
 }
 
@@ -313,8 +320,15 @@ function BreakdownChart({ title, data, showPercent = false, note, chartKey, onSl
 }
 
 function ChartBreakDown() {
-    const { currentMonth, currentYear } = useBudgetWindow();
+    const { currentMonth, currentYear, setWindow } = useBudgetWindow();
+    const {
+        colorForExpenseCategory,
+        colorForIncomeCategory,
+        noteExpenseCategories,
+        noteIncomeCategories,
+    } = useCategoryColorAssignments();
     const monthLabel = monthYearLabel(currentMonth, currentYear);
+    const longestMonthName = MONTH_NAMES.reduce((longest, name) => name.length > longest.length ? name : longest);
     const [expenseItems, setExpenseItems] = useState([]);
     const [expenseCategoryData, setExpenseCategoryData] = useState([]);
     const [incomeCategoryData, setIncomeCategoryData] = useState([]);
@@ -344,9 +358,11 @@ function ChartBreakDown() {
                         saved: sumAmounts(income) - sumAmounts(expenses),
                     };
                 });
+                noteExpenseCategories(split.expenses.map((item) => item.category));
+                noteIncomeCategories(split.income.map((item) => item.category));
                 setExpenseItems(expensesInWindow);
-                setExpenseCategoryData(withSliceColors(slicesByCategory(expensesInWindow)));
-                setIncomeCategoryData(withSliceColors(slicesByCategory(windowIncome)));
+                setExpenseCategoryData(slicesByCategory(expensesInWindow));
+                setIncomeCategoryData(slicesByCategory(windowIncome));
                 setSelectedExpenseCategory(null);
                 setSavingsMonths(months);
                 setLoadError('');
@@ -360,19 +376,28 @@ function ChartBreakDown() {
         return () => {
             cancelled = true;
         };
-    }, [currentMonth, currentYear]);
+    }, [currentMonth, currentYear, noteExpenseCategories, noteIncomeCategories]);
 
+    const coloredExpenseCategories = withCategoryColors(expenseCategoryData, colorForExpenseCategory);
+    const coloredIncomeCategories = withCategoryColors(incomeCategoryData, colorForIncomeCategory);
     const hasData = expenseCategoryData.length > 0 || incomeCategoryData.length > 0;
     const expenseTotal = expenseCategoryData.reduce((sum, slice) => sum + Number(slice.value), 0);
     const incomeTotal = incomeCategoryData.reduce((sum, slice) => sum + Number(slice.value), 0);
-    const incomeShareBars = incomeTotal > 0 ? spendingBars(expenseCategoryData, incomeTotal) : [];
+    const incomeShareBars = incomeTotal > 0 ? spendingBars(coloredExpenseCategories, incomeTotal) : [];
     const expenseChartData = selectedExpenseCategory
         ? slicesByItem(expenseItems.filter((item) => item.category === selectedExpenseCategory))
-        : expenseCategoryData;
+        : coloredExpenseCategories;
 
     return (
         <div className="chart-breakdown">
-            <h1 className="chart-breakdown-month">{monthLabel}</h1>
+            <h1 className="chart-breakdown-month expense-window-nav">
+                <ExpenseWindowButton updateState={setWindow} direction="Previous" currentMonth={currentMonth} currentYear={currentYear} />
+                <span className="expense-window-month">
+                    <span className="expense-window-month-sizer" aria-hidden="true">: {longestMonthName} {currentYear}</span>
+                    <span className="expense-window-month-label">{monthLabel}</span>
+                </span>
+                <ExpenseWindowButton updateState={setWindow} direction="Next" currentMonth={currentMonth} currentYear={currentYear} />
+            </h1>
             {loadError && <p className="chart-breakdown-message">{loadError}</p>}
             {!loadError && !hasData && (
                 <p className="chart-breakdown-message">No income or expenses for this month.</p>
@@ -398,7 +423,7 @@ function ChartBreakDown() {
                         />
                     )}
                     {incomeCategoryData.length > 0 && (
-                        <BreakdownChart title="Income" data={incomeCategoryData} showPercent />
+                        <BreakdownChart title="Income" data={coloredIncomeCategories} showPercent />
                     )}
                 </div>
             )}
