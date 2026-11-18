@@ -214,6 +214,10 @@ button.chart-breakdown-legend-row:focus-visible {
   }
 }
 
+.manage-expenses-total-label {
+  color: gray;
+}
+
 .manage-expenses-net-income-positive {
   color: green;
 }

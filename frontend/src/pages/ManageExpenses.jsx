@@ -23,9 +23,10 @@ function ManageExpenses() {
     const recurringIncome = income.filter((item) => item.recurring === true)
     const currWindowExpenses = itemsForWindow(expenses, recurringExpenses, currentMonth, currentYear)
     const currWindowIncome = itemsForWindow(income, recurringIncome, currentMonth, currentYear)
-    const windowIncomeTotal = currWindowIncome.reduce((total, item) => total + Number(item.amount), 0)
-    const windowExpenseTotal = currWindowExpenses.reduce((total, item) => total + Number(item.amount), 0)
-    const netIncome = Math.round((windowIncomeTotal - windowExpenseTotal) * 100) / 100
+    const roundCents = (amount) => Math.round(amount * 100) / 100
+    const windowIncomeTotal = roundCents(currWindowIncome.reduce((total, item) => total + Number(item.amount), 0))
+    const windowExpenseTotal = roundCents(currWindowExpenses.reduce((total, item) => total + Number(item.amount), 0))
+    const netIncome = roundCents(windowIncomeTotal - windowExpenseTotal)
 
     //Function will add an expense or income item based on the type parameter.
     const addExpense_addIncome = async (type, name, amount, category, date, recurring = false) => {
@@ -194,7 +195,9 @@ function ManageExpenses() {
             <div className="manage-expenses-categories">
                 <ManageCategories incomeCategories={incomeCategories} expenseCategories={expenseCategories} addIncomeCategory={addIncomeCategory} addExpenseCategory={addExpenseCategory} removeIncomeCategory={removeIncomeCategory} removeExpenseCategory={removeExpenseCategory} />
             </div>
-            <div className={netIncome > 0 ? 'manage-expenses-net-income-positive' : netIncome < 0 ? 'manage-expenses-net-income-negative' : 'manage-expenses-net-income'}>{netIncome > 0 ? '+' : netIncome < 0 ? '-' : ''}${Math.abs(netIncome)} Net Income</div>
+            <div className="manage-expenses-total"><span className="manage-expenses-total-label">Income Total: </span>${windowIncomeTotal}</div>
+            <div className="manage-expenses-total"><span className="manage-expenses-total-label">Expenses Total: </span>${windowExpenseTotal}</div>
+            <div className={netIncome > 0 ? 'manage-expenses-net-income-positive' : netIncome < 0 ? 'manage-expenses-net-income-negative' : 'manage-expenses-net-income'}>Net Income: {netIncome > 0 ? '+' : netIncome < 0 ? '-' : ''}${Math.abs(netIncome)}</div>
             <div className="manage-expenses-columns">
                 <section className="manage-expenses-column expenses-column">
                     <h2>Expenses</h2>
