@@ -1,4 +1,5 @@
 import pool from './db.js';
+import { CURRENT_USER_ID } from './currentUser.js';
 
 // DrawSQL exported category names and item names as bigint, and pointed
 // Income_or_Expense.name at User(id). The page stores both as text.
@@ -16,4 +17,10 @@ export async function ensureSchema() {
     ALTER TABLE "Categories"
     ALTER COLUMN category TYPE text USING category::text
   `);
+  // Categories created before user_fk existed have a null owner. They belong
+  // to the only account until login can assign them per user.
+  await pool.query(
+    `UPDATE "Categories" SET user_fk = $1 WHERE user_fk IS NULL`,
+    [CURRENT_USER_ID]
+  );
 }

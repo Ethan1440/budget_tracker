@@ -1,14 +1,19 @@
 import { Router } from 'express';
+import { CURRENT_USER_ID } from '../currentUser.js';
 import pool from '../db.js';
 
 const router = Router();
 
+const CATEGORY_COLUMNS = 'id, category, income_category, expense_category, user_fk, created_at, updated_at';
+
 router.get('/', async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT id, category, income_category, expense_category, created_at, updated_at
+      `SELECT ${CATEGORY_COLUMNS}
        FROM "Categories"
-       ORDER BY id`
+       WHERE user_fk = $1
+       ORDER BY id`,
+      [CURRENT_USER_ID]
     );
     res.json(result.rows);
   } catch (error) {
@@ -33,13 +38,17 @@ router.post('/', async (req, res, next) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO "Categories" (category, income_category, expense_category, created_at, updated_at)
-       VALUES ($1, $2, $3, NOW(), NOW())
-       RETURNING id, category, income_category, expense_category, created_at, updated_at`,
-      [category.trim(), income_category, expense_category]
+      `INSERT INTO "Categories" (category, income_category, expense_category, user_fk, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, NOW(), NOW())
+       RETURNING ${CATEGORY_COLUMNS}`,
+      [category.trim(), income_category, expense_category, CURRENT_USER_ID]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
+    if (error.code === '23503' && error.constraint === 'fk_users_categories') {
+      res.status(400).json({ error: 'User does not exist' });
+      return;
+    }
     next(error);
   }
 });

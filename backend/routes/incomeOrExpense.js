@@ -1,10 +1,8 @@
 import { Router } from 'express';
+import { CURRENT_USER_ID } from '../currentUser.js';
 import pool from '../db.js';
 
 const router = Router();
-
-// Accounts are not wired up yet. Every new item belongs to this user.
-const DEFAULT_USER_FK = 1;
 
 const ITEM_SELECT = `
   SELECT i.id,
@@ -25,7 +23,10 @@ const ITEM_SELECT = `
 
 router.get('/', async (req, res, next) => {
   try {
-    const result = await pool.query(`${ITEM_SELECT} ORDER BY i.id`);
+    const result = await pool.query(
+      `${ITEM_SELECT} WHERE i.user_fk = $1 ORDER BY i.id`,
+      [CURRENT_USER_ID]
+    );
     res.json(result.rows);
   } catch (error) {
     next(error);
@@ -67,7 +68,7 @@ router.post('/', async (req, res, next) => {
          (user_fk, name, category, amount, recurring, item_date, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
        RETURNING id`,
-      [DEFAULT_USER_FK, name.trim(), categoryId, numericAmount, recurring, item_date.trim()]
+      [CURRENT_USER_ID, name.trim(), categoryId, numericAmount, recurring, item_date.trim()]
     );
 
     const result = await pool.query(`${ITEM_SELECT} WHERE i.id = $1`, [inserted.rows[0].id]);
@@ -78,7 +79,10 @@ router.post('/', async (req, res, next) => {
       return;
     }
     if (error.code === '23503') {
-      res.status(400).json({ error: 'Category does not exist' });
+      const message = error.constraint === 'fk_users_income_expense'
+        ? 'User does not exist'
+        : 'Category does not exist';
+      res.status(400).json({ error: message });
       return;
     }
     next(error);
@@ -97,7 +101,7 @@ router.delete('/:id', async (req, res, next) => {
       `DELETE FROM "Income_or_Expense"
        WHERE id = $1 AND user_fk = $2
        RETURNING id`,
-      [id, DEFAULT_USER_FK]
+      [id, CURRENT_USER_ID]
     );
     if (result.rowCount === 0) {
       res.status(404).json({ error: 'Item not found' });

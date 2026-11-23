@@ -65,7 +65,7 @@ function AddItemButton({ type, categories, onAdd }) {
                             ))}
                         </select>
                         <label htmlFor="amount-input">Amount: </label>
-                        <input id="amount-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                        <input id="amount-input" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
                         <label htmlFor="date-input">Date: </label>
                         <input id="date-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
                         <label htmlFor="recurring-input">Recurring: </label>
