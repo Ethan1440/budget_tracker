@@ -68,6 +68,10 @@ function spendingBars(expenseSlices, incomeTotal) {
         .sort((left, right) => right.percent - left.percent);
 }
 
+function byDescendingShare(items) {
+    return [...items].sort((left, right) => Number(right.value) - Number(left.value));
+}
+
 function slicesByCategory(items) {
     const totals = new Map();
     for (const item of items) {
@@ -266,7 +270,8 @@ function SavingsBarChart({ months }) {
     );
 }
 
-function BreakdownChart({ title, data, showPercent = false, note, chartKey, onSliceSelect, onReset, selectedCategory, legendRowLimit }) {
+function BreakdownChart({ title, data, showPercent = false, note, chartKey, onSliceSelect, onReset, selectedCategory, legendRowLimit, sortLegend = false }) {
+    const legendItems = sortLegend ? byDescendingShare(data) : data;
     return (
         <section className="chart-breakdown-panel">
             {onReset ? (
@@ -308,7 +313,7 @@ function BreakdownChart({ title, data, showPercent = false, note, chartKey, onSl
                     } : undefined}
                 />
                 <SliceList
-                    items={data}
+                    items={legendItems}
                     showPercent={showPercent}
                     onSelect={onSliceSelect}
                     visibleRowLimit={legendRowLimit}
@@ -415,6 +420,7 @@ function ChartBreakDown() {
                             title="Expenses"
                             data={expenseChartData}
                             showPercent
+                            sortLegend
                             chartKey={selectedExpenseCategory ?? 'overview'}
                             legendRowLimit={LEGEND_VISIBLE_ROWS}
                             selectedCategory={selectedExpenseCategory}
